@@ -7,13 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="MedManagerApi\**" />
-    <Content Remove="MedManagerApi\**" />
-    <EmbeddedResource Remove="MedManagerApi\**" />
-    <None Remove="MedManagerApi\**" />
-  </ItemGroup>
-
-  <ItemGroup>
     <None Remove="Properties\launchSettings.json" />
   </ItemGroup>
 
@@ -36,12 +29,6 @@
     </PackageReference>
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Include="obj\MedManagerApi.csproj.nuget.g.props" />
-    <None Include="obj\MedManagerApi.csproj.nuget.g.targets" />
-    <None Include="obj\project.nuget.cache" />
   </ItemGroup>
 
 </Project>
