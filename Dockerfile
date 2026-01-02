@@ -2,11 +2,8 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# Copy csproj(s) and restore as distinct layers
-COPY *.sln .
-# Copy project files
-COPY MedManagerApi/*.csproj ./MedManagerApi/
-COPY Tools/SeedData/*.csproj ./Tools/SeedData/
+# Copy project file and restore
+COPY MedManagerApi.csproj ./MedManagerApi/
 
 RUN dotnet restore "MedManagerApi/MedManagerApi.csproj"
 
