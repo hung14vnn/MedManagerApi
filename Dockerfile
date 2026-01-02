@@ -2,14 +2,12 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# Copy project file and restore
-COPY MedManagerApi.csproj ./MedManagerApi/
-
-RUN dotnet restore "MedManagerApi/MedManagerApi.csproj"
-
-# Copy everything and build
+# Copy entire repo into the container (ensures project and source files are colocated)
 COPY . .
-RUN dotnet publish "MedManagerApi/MedManagerApi.csproj" -c Release -o /app/publish /p:UseAppHost=false
+
+# Restore and publish the project (project file is at repository root)
+RUN dotnet restore "MedManagerApi.csproj"
+RUN dotnet publish "MedManagerApi.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 # Runtime image
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
