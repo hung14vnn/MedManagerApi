@@ -159,6 +159,11 @@ using (var scope = app.Services.CreateScope())
     var services = scope.ServiceProvider;
     try
     {
+        // Ensure database schema is applied before seeding
+        var dbContext = services.GetRequiredService<MedManagerDbContext>();
+        startupLogger.LogInformation("Applying pending migrations (if any)...");
+        await dbContext.Database.MigrateAsync();
+
         var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
         
@@ -175,7 +180,7 @@ using (var scope = app.Services.CreateScope())
     catch (Exception ex)
     {
         var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred while seeding roles and super admin");
+        logger.LogError(ex, "An error occurred while migrating or seeding the database");
     }
 }
 
@@ -197,7 +202,18 @@ else
     app.UseHsts();
 }
 
-app.UseHttpsRedirection();
+// Only enable HTTPS redirection when HTTPS is configured in URLs
+var configuredUrls = builder.Configuration["ASPNETCORE_URLS"] ?? Environment.GetEnvironmentVariable("ASPNETCORE_URLS");
+if (!string.IsNullOrEmpty(configuredUrls) && configuredUrls.Contains("https", StringComparison.OrdinalIgnoreCase))
+{
+    app.UseHttpsRedirection();
+}
+else
+{
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    logger.LogWarning("HTTPS redirection is disabled because no HTTPS URL is configured (ASPNETCORE_URLS does not contain 'https').");
+}
+
 app.UseCors("AllowAll");
 
 app.UseAuthentication();
