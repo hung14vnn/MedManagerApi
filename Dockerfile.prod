@@ -1,0 +1,33 @@
+# Production Dockerfile
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
+WORKDIR /app
+EXPOSE 80
+
+# Create non-root user for security
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+
+# Copy csproj and restore dependencies
+COPY ["MedManagerApi.csproj", "./"]
+RUN dotnet restore "MedManagerApi.csproj"
+
+# Copy everything else and build
+COPY . .
+RUN dotnet build "MedManagerApi.csproj" -c Release -o /app/build
+
+FROM build AS publish
+RUN dotnet publish "MedManagerApi.csproj" -c Release -o /app/publish /p:UseAppHost=false
+
+FROM base AS final
+WORKDIR /app
+COPY --from=publish /app/publish .
+
+# Create logs directory
+RUN mkdir -p /app/logs && chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
+
+ENTRYPOINT ["dotnet", "MedManagerApi.dll"]

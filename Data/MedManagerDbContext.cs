@@ -1,9 +1,10 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using MedManagerApi.Models;
 
 namespace MedManagerApi.Data;
 
-public class MedManagerDbContext : DbContext
+public class MedManagerDbContext : IdentityDbContext<ApplicationUser>
 {
     public MedManagerDbContext(DbContextOptions<MedManagerDbContext> options)
         : base(options)

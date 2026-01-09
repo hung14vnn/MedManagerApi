@@ -49,22 +49,34 @@ artifacts/
 # ASP.NET Scaffolding
 ScaffoldingReadMe.txt
 
-# Entity Framework Migrations
-# Uncomment if you need to version migrations
-# Migrations/
+# ========================================
+# SECURITY: Environment & Secrets
+# ========================================
+.env
+.env.*
+!.env.example
+*.env
+appsettings.json
+appsettings.Development.json
+appsettings.Production.json
+appsettings.Staging.json
+!appsettings.Example.json
 
-# Database
-*.db
-*.db-shm
-*.db-wal
-*.sqlite
-*.sqlite3
+# ========================================
+# Production Files
+# ========================================
+backups/
+*.sql
+*.sql.gz
+logs/
+*.log
 
-# Sensitive data
-appsettings.*.json
-!appsettings.Development.json
+# SSL Certificates
+*.pem
+*.key
+*.crt
 *.pfx
-*.p12
 
-# User secrets
-secrets.json
+# Database files
+*.db
+*.sqlite

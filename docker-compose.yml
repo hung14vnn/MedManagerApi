@@ -28,6 +28,19 @@ services:
       - PGUSER=postgres
       - PGPASSWORD=postgres
       - PGDATABASE=MedManager
+      # JWT Settings
+      - Jwt__Key=YourSuperSecretKeyThatMustBeAtLeast32CharactersLongForSecurity!
+      - Jwt__Issuer=MedManagerApi
+      - Jwt__Audience=MedManagerApiClients
+      - Jwt__ExpiryMinutes=60
+      # Email Settings (Update with your SMTP credentials)
+      - EmailSettings__FromEmail=noreply@medmanager.com
+      - EmailSettings__FromName=MedManager
+      - EmailSettings__SmtpHost=smtp.gmail.com
+      - EmailSettings__SmtpPort=587
+      - EmailSettings__SmtpUser=your-email@gmail.com
+      - EmailSettings__SmtpPassword=your-app-password
+      - EmailSettings__EnableSsl=true
     ports:
       - "5042:80"
     restart: unless-stopped
