@@ -46,6 +46,7 @@ services:
       - EmailSettings__SmtpUser=${EMAIL_SMTP_USER}
       - EmailSettings__SmtpPassword=${EMAIL_SMTP_PASSWORD}
       - EmailSettings__EnableSsl=${EMAIL_ENABLE_SSL}
+      - EmailSettings__VerificationBaseUrl=http://103.166.183.121:5042
     networks:
       - medmanager_network
     volumes:
