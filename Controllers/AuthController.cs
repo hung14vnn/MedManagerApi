@@ -2,7 +2,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Extensions.Options;
 using System.Text;
+using MedManagerApi.Configuration;
 using MedManagerApi.DTOs;
 using MedManagerApi.Models;
 using MedManagerApi.Services;
@@ -18,19 +20,22 @@ public class AuthController : ControllerBase
     private readonly ITokenService _tokenService;
     private readonly IEmailService _emailService;
     private readonly ILogger<AuthController> _logger;
+    private readonly EmailSettings _emailSettings;
 
     public AuthController(
         UserManager<ApplicationUser> userManager,
         RoleManager<IdentityRole> roleManager,
         ITokenService tokenService,
         IEmailService emailService,
-        ILogger<AuthController> logger)
+        ILogger<AuthController> logger,
+        IOptions<EmailSettings> emailSettings)
     {
         _userManager = userManager;
         _roleManager = roleManager;
         _tokenService = tokenService;
         _emailService = emailService;
         _logger = logger;
+        _emailSettings = emailSettings.Value;
     }
 
     [HttpPost("register")]
@@ -63,23 +68,39 @@ public class AuthController : ControllerBase
         var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
         var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
         
-        // Build verification link (adjust URL for your frontend)
-        var verificationLink = $"{Request.Scheme}://{Request.Host}/api/auth/verify-email?email={user.Email}&token={encodedToken}";
+        // Use configured VerificationBaseUrl if available, otherwise use Request URL
+        var baseUrl = !string.IsNullOrEmpty(_emailSettings.VerificationBaseUrl)
+            ? _emailSettings.VerificationBaseUrl
+            : $"{Request.Scheme}://{Request.Host}";
+            
+        var verificationLink = $"{baseUrl}/api/auth/verify-email?email={user.Email}&token={encodedToken}";
         
+        _logger.LogInformation("Generated verification link for {Email}: {Link}", user.Email, verificationLink);
+
         // Send verification email
+        var emailSent = false;
+        var emailError = string.Empty;
+        
         try
         {
             await _emailService.SendEmailVerificationAsync(user.Email, user.FirstName ?? "User", verificationLink);
+            emailSent = true;
+            _logger.LogInformation("Verification email sent successfully to {Email}", user.Email);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send verification email to {Email}", user.Email);
+            emailError = ex.Message;
+            _logger.LogError(ex, "Failed to send verification email to {Email}. Error: {ErrorMessage}", user.Email, ex.Message);
         }
 
         return Ok(new 
         { 
-            message = "Registration successful. Please check your email to verify your account.",
-            email = user.Email
+            message = emailSent 
+                ? "Registration successful. Please check your email to verify your account."
+                : "Registration successful, but we couldn't send the verification email. Please contact support or try resending.",
+            email = user.Email,
+            emailSent,
+            emailError = emailSent ? null : emailError
         });
     }
 
@@ -127,7 +148,12 @@ public class AuthController : ControllerBase
 
         var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
         var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
-        var verificationLink = $"{Request.Scheme}://{Request.Host}/api/auth/verify-email?email={user.Email}&token={encodedToken}";
+        
+        var baseUrl = !string.IsNullOrEmpty(_emailSettings.VerificationBaseUrl)
+            ? _emailSettings.VerificationBaseUrl
+            : $"{Request.Scheme}://{Request.Host}";
+            
+        var verificationLink = $"{baseUrl}/api/auth/verify-email?email={user.Email}&token={encodedToken}";
 
         try
         {
@@ -201,8 +227,11 @@ public class AuthController : ControllerBase
         var token = await _userManager.GeneratePasswordResetTokenAsync(user);
         var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
         
-        // Build reset link (adjust URL for your frontend)
-        var resetLink = $"{Request.Scheme}://{Request.Host}/api/auth/reset-password?email={user.Email}&token={encodedToken}";
+        var baseUrl = !string.IsNullOrEmpty(_emailSettings.VerificationBaseUrl)
+            ? _emailSettings.VerificationBaseUrl
+            : $"{Request.Scheme}://{Request.Host}";
+            
+        var resetLink = $"{baseUrl}/api/auth/reset-password?email={user.Email}&token={encodedToken}";
 
         try
         {

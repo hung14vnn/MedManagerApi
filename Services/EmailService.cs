@@ -123,6 +123,10 @@ public class EmailService : IEmailService
     {
         try
         {
+            _logger.LogInformation("Attempting to send email to {Email} with subject: {Subject}", toEmail, subject);
+            _logger.LogDebug("SMTP Config - Host: {Host}, Port: {Port}, User: {User}, SSL: {SSL}", 
+                _emailSettings.SmtpHost, _emailSettings.SmtpPort, _emailSettings.SmtpUser, _emailSettings.EnableSsl);
+            
             var message = new MimeMessage();
             message.From.Add(new MailboxAddress(_emailSettings.FromName, _emailSettings.FromEmail));
             message.To.Add(new MailboxAddress("", toEmail));
@@ -132,23 +136,46 @@ public class EmailService : IEmailService
             message.Body = bodyBuilder.ToMessageBody();
 
             using var client = new SmtpClient();
-            await client.ConnectAsync(_emailSettings.SmtpHost, _emailSettings.SmtpPort, 
-                _emailSettings.EnableSsl ? SecureSocketOptions.StartTls : SecureSocketOptions.None);
             
+            // For Brevo SMTP on port 587, we need StartTls
+            _logger.LogDebug("Connecting to SMTP server...");
+            await client.ConnectAsync(_emailSettings.SmtpHost, _emailSettings.SmtpPort, SecureSocketOptions.StartTls);
+            
+            _logger.LogDebug("Authenticating...");
             if (!string.IsNullOrEmpty(_emailSettings.SmtpUser) && !string.IsNullOrEmpty(_emailSettings.SmtpPassword))
             {
                 await client.AuthenticateAsync(_emailSettings.SmtpUser, _emailSettings.SmtpPassword);
             }
+            else
+            {
+                _logger.LogWarning("SMTP credentials are empty - attempting to send without authentication");
+            }
             
+            _logger.LogDebug("Sending email...");
             await client.SendAsync(message);
             await client.DisconnectAsync(true);
 
             _logger.LogInformation("Email sent successfully to {Email}", toEmail);
         }
+        catch (AuthenticationException authEx)
+        {
+            _logger.LogError(authEx, "SMTP Authentication failed for {Email}. Check SMTP username and password.", toEmail);
+            throw new Exception($"Email authentication failed: {authEx.Message}", authEx);
+        }
+        catch (SmtpCommandException smtpEx)
+        {
+            _logger.LogError(smtpEx, "SMTP command failed for {Email}. StatusCode: {StatusCode}", toEmail, smtpEx.StatusCode);
+            throw new Exception($"SMTP error: {smtpEx.Message}", smtpEx);
+        }
+        catch (SmtpProtocolException protocolEx)
+        {
+            _logger.LogError(protocolEx, "SMTP protocol error for {Email}", toEmail);
+            throw new Exception($"SMTP protocol error: {protocolEx.Message}", protocolEx);
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send email to {Email}", toEmail);
-            throw;
+            _logger.LogError(ex, "Unexpected error sending email to {Email}. Error: {ErrorMessage}", toEmail, ex.Message);
+            throw new Exception($"Failed to send email: {ex.Message}", ex);
         }
     }
 }
