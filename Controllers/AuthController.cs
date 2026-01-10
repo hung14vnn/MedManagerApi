@@ -75,7 +75,6 @@ public class AuthController : ControllerBase
             
         var verificationLink = $"{baseUrl}/api/auth/verify-email?email={user.Email}&token={encodedToken}";
         
-        _logger.LogInformation("Generated verification link for {Email}: {Link}", user.Email, verificationLink);
 
         // Send verification email
         var emailSent = false;
@@ -85,12 +84,10 @@ public class AuthController : ControllerBase
         {
             await _emailService.SendEmailVerificationAsync(user.Email, user.FirstName ?? "User", verificationLink);
             emailSent = true;
-            _logger.LogInformation("Verification email sent successfully to {Email}", user.Email);
         }
         catch (Exception ex)
         {
             emailError = ex.Message;
-            _logger.LogError(ex, "Failed to send verification email to {Email}. Error: {ErrorMessage}", user.Email, ex.Message);
         }
 
         return Ok(new 
