@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
@@ -10,6 +11,24 @@ using MedManagerApi.Services;
 using MedManagerApi.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Load environment variables (they override appsettings)
+builder.Configuration.AddEnvironmentVariables();
+
+// Configure forwarded headers for proxy support (including Cloudflare)
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | 
+                               ForwardedHeaders.XForwardedProto | 
+                               ForwardedHeaders.XForwardedHost;
+    
+    // Clear defaults to trust Cloudflare and other proxies
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+    
+    // Cloudflare specific: Use CF-Connecting-IP for real client IP
+    options.ForwardedForHeaderName = "CF-Connecting-IP";
+});
 
 // Add services to the container
 builder.Services.AddControllers();
@@ -93,6 +112,23 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
+    options.Events = new JwtBearerEvents
+    {
+        OnAuthenticationFailed = context =>
+        {
+            var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+            logger.LogError("JWT Authentication failed: {Error}", context.Exception.Message);
+            return Task.CompletedTask;
+        },
+        OnTokenValidated = context =>
+        {
+            var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+            var claims = context.Principal?.Claims.Select(c => $"{c.Type}={c.Value}");
+            logger.LogInformation("JWT Token validated successfully. Claims: {Claims}", string.Join(", ", claims ?? Array.Empty<string>()));
+            return Task.CompletedTask;
+        }
+    };
+    
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true,
@@ -133,6 +169,9 @@ builder.Services.AddCors(options =>
 builder.Services.AddHealthChecks();
 
 var app = builder.Build();
+
+// Use forwarded headers BEFORE other middleware
+app.UseForwardedHeaders();
 
 // Log configuration sources (helpful for debugging)
 var startupLogger = app.Services.GetRequiredService<ILogger<Program>>();
