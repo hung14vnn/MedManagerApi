@@ -326,4 +326,27 @@ public class AuthController : ControllerBase
             Roles = roles
         });
     }
+
+    // DEBUG ENDPOINT - Check token claims
+    [Authorize]
+    [HttpGet("debug-claims")]
+    public IActionResult GetClaims()
+    {
+        var claims = User.Claims.Select(c => new { c.Type, c.Value }).ToList();
+        var isInSuperAdminRole = User.IsInRole(AppRoles.SuperAdmin);
+        var hasRoleClaim = User.HasClaim(c => c.Type == System.Security.Claims.ClaimTypes.Role && c.Value == AppRoles.SuperAdmin);
+        
+        return Ok(new
+        {
+            claims,
+            isInSuperAdminRole,
+            hasRoleClaim,
+            identity = new
+            {
+                isAuthenticated = User.Identity?.IsAuthenticated,
+                authenticationType = User.Identity?.AuthenticationType,
+                name = User.Identity?.Name
+            }
+        });
+    }
 }

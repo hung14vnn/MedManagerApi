@@ -126,6 +126,23 @@ builder.Services.AddAuthentication(options =>
             var claims = context.Principal?.Claims.Select(c => $"{c.Type}={c.Value}");
             logger.LogInformation("JWT Token validated successfully. Claims: {Claims}", string.Join(", ", claims ?? Array.Empty<string>()));
             return Task.CompletedTask;
+        },
+        OnChallenge = context =>
+        {
+            var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+            logger.LogWarning("JWT Challenge triggered. Error: {Error}, ErrorDescription: {ErrorDescription}, Path: {Path}", 
+                context.Error, context.ErrorDescription, context.Request.Path);
+            return Task.CompletedTask;
+        },
+        OnForbidden = context =>
+        {
+            var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+            var user = context.Principal?.Identity?.Name ?? "Anonymous";
+            var roles = context.Principal?.Claims.Where(c => c.Type == System.Security.Claims.ClaimTypes.Role)
+                .Select(c => c.Value).ToList() ?? new List<string>();
+            logger.LogWarning("Authorization forbidden for user {User} with roles: {Roles} on path: {Path}", 
+                user, string.Join(", ", roles), context.Request.Path);
+            return Task.CompletedTask;
         }
     };
     
