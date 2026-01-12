@@ -188,18 +188,6 @@ public class AuthController : ControllerBase
         var token = await _tokenService.GenerateJwtTokenAsync(user);
         var roles = await _userManager.GetRolesAsync(user);
 
-        // Send login notification (optional - async fire and forget)
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                await _emailService.SendLoginNotificationAsync(user.Email!, user.FirstName ?? "User");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to send login notification to {Email}", user.Email);
-            }
-        });
 
         return Ok(new AuthResponseDto
         {
