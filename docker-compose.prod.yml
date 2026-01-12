@@ -46,7 +46,6 @@ services:
       - EmailSettings__SmtpUser=${EMAIL_SMTP_USER}
       - EmailSettings__SmtpPassword=${EMAIL_SMTP_PASSWORD}
       - EmailSettings__EnableSsl=${EMAIL_ENABLE_SSL}
-      - EmailSettings__VerificationBaseUrl=https://tracuuduoclamsang.vn
     networks:
       - medmanager_network
     volumes:

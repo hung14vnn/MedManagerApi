@@ -173,6 +173,31 @@ var app = builder.Build();
 // Use forwarded headers BEFORE other middleware
 app.UseForwardedHeaders();
 
+// Log incoming requests for debugging
+app.Use(async (context, next) =>
+{
+    var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+    
+    logger.LogInformation("Incoming request: {Method} {Path} from {RemoteIp}", 
+        context.Request.Method, 
+        context.Request.Path, 
+        context.Connection.RemoteIpAddress);
+    
+    logger.LogDebug("Request Headers: Scheme={Scheme}, Host={Host}, Authorization={HasAuth}", 
+        context.Request.Scheme,
+        context.Request.Host,
+        context.Request.Headers.ContainsKey("Authorization") ? "Present" : "Missing");
+    
+    if (context.Request.Headers.ContainsKey("Authorization"))
+    {
+        var authHeader = context.Request.Headers["Authorization"].ToString();
+        logger.LogDebug("Authorization header: {AuthHeader}", 
+            authHeader.Length > 20 ? authHeader.Substring(0, 20) + "..." : authHeader);
+    }
+    
+    await next();
+});
+
 // Log configuration sources (helpful for debugging)
 var startupLogger = app.Services.GetRequiredService<ILogger<Program>>();
 startupLogger.LogInformation("JWT Key configured: {HasKey}", !string.IsNullOrEmpty(builder.Configuration["Jwt:Key"]));
