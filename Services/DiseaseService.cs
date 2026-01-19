@@ -38,6 +38,9 @@ public class DiseaseService : IDiseaseService
 
         var protocols = await _context.DiseaseProtocols
             .Include(dp => dp.Drug)
+                .ThenInclude(d => d.DosageForm)
+            .Include(dp => dp.Drug)
+                .ThenInclude(d => d.Route)
             .Where(dp => dp.DiseaseId == diseaseId)
             .OrderBy(dp => dp.PreferenceOrder)
             .ToListAsync();
@@ -47,9 +50,11 @@ public class DiseaseService : IDiseaseService
             .Select(dp => new TreatmentOptionDto(
                 new DrugSearchDto(
                     dp.Drug.Id,
-                    dp.Drug.ActiveIngredient,
-                    dp.Drug.BrandName,
-                    dp.Drug.PharmacologicalGroup
+                    dp.Drug.Code,
+                    dp.Drug.Name,
+                    dp.Drug.Status.ToString(),
+                    dp.Drug.DosageForm != null ? dp.Drug.DosageForm.Name : null,
+                    dp.Drug.Route != null ? dp.Drug.Route.Name : null
                 ),
                 dp.DosageRecommendation,
                 dp.SpecialConditions,
@@ -62,9 +67,11 @@ public class DiseaseService : IDiseaseService
             .Select(dp => new TreatmentOptionDto(
                 new DrugSearchDto(
                     dp.Drug.Id,
-                    dp.Drug.ActiveIngredient,
-                    dp.Drug.BrandName,
-                    dp.Drug.PharmacologicalGroup
+                    dp.Drug.Code,
+                    dp.Drug.Name,
+                    dp.Drug.Status.ToString(),
+                    dp.Drug.DosageForm != null ? dp.Drug.DosageForm.Name : null,
+                    dp.Drug.Route != null ? dp.Drug.Route.Name : null
                 ),
                 dp.DosageRecommendation,
                 dp.SpecialConditions,
@@ -110,31 +117,36 @@ public class DiseaseService : IDiseaseService
         _context.DiseaseProtocols.Add(protocol);
         await _context.SaveChangesAsync();
 
-        // Reload with navigation properties
-        var createdProtocol = await _context.DiseaseProtocols
-            .Include(dp => dp.Disease)
-            .Include(dp => dp.Drug)
-            .FirstAsync(dp => dp.Id == protocol.Id);
+                // Reload with navigation properties
+                var createdProtocol = await _context.DiseaseProtocols
+                    .Include(dp => dp.Disease)
+                    .Include(dp => dp.Drug)
+                        .ThenInclude(d => d.DosageForm)
+                    .Include(dp => dp.Drug)
+                        .ThenInclude(d => d.Route)
+                    .FirstAsync(dp => dp.Id == protocol.Id);
 
-        return new DiseaseProtocolDto(
-            createdProtocol.Id,
-            new DiseaseDto(
-                createdProtocol.Disease.Id,
-                createdProtocol.Disease.Name,
-                createdProtocol.Disease.IcdCode,
-                createdProtocol.Disease.Description
-            ),
-            new DrugSearchDto(
-                createdProtocol.Drug.Id,
-                createdProtocol.Drug.ActiveIngredient,
-                createdProtocol.Drug.BrandName,
-                createdProtocol.Drug.PharmacologicalGroup
-            ),
-            createdProtocol.IsPreferred,
-            createdProtocol.PreferenceOrder,
-            createdProtocol.DosageRecommendation,
-            createdProtocol.SpecialConditions,
-            createdProtocol.Notes
-        );
-    }
-}
+                return new DiseaseProtocolDto(
+                    createdProtocol.Id,
+                    new DiseaseDto(
+                        createdProtocol.Disease.Id,
+                        createdProtocol.Disease.Name,
+                        createdProtocol.Disease.IcdCode,
+                        createdProtocol.Disease.Description
+                    ),
+                    new DrugSearchDto(
+                        createdProtocol.Drug.Id,
+                        createdProtocol.Drug.Code,
+                        createdProtocol.Drug.Name,
+                        createdProtocol.Drug.Status.ToString(),
+                        createdProtocol.Drug.DosageForm != null ? createdProtocol.Drug.DosageForm.Name : null,
+                        createdProtocol.Drug.Route != null ? createdProtocol.Drug.Route.Name : null
+                    ),
+                    createdProtocol.IsPreferred,
+                    createdProtocol.PreferenceOrder,
+                    createdProtocol.DosageRecommendation,
+                    createdProtocol.SpecialConditions,
+                    createdProtocol.Notes
+                );
+            }
+        }

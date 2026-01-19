@@ -1,44 +1,76 @@
+using MedManagerApi.Models;
+
 namespace MedManagerApi.DTOs;
 
 public record DrugSearchDto(
     int Id,
-    string ActiveIngredient,
-    string BrandName,
-    string? PharmacologicalGroup
+    string Code,
+    string Name,
+    string Status,
+    string? DosageForm,
+    string? Route
 );
 
 public record DrugDetailDto(
     int Id,
-    string ActiveIngredient,
-    string BrandName,
-    string? PharmacologicalGroup,
-    string? Indications,
-    string? Contraindications,
-    string? DosageAdults,
-    string? DosageChildren,
-    string? DosageHepaticImpairment,
-    string? DosageRenalImpairment,
-    string? AdverseEffects,
-    string? PregnancyPrecautions,
-    string? BreastfeedingPrecautions,
-    string? OtherPrecautions,
-    List<ReferenceDto> References
+    string Code,
+    string Name,
+    string Status,
+    DosageFormDto? DosageForm,
+    RouteDto? Route,
+    List<DrugIngredientDto> Ingredients,
+    List<ReferenceDto> References,
+    DateTime CreatedAt,
+    DateTime UpdatedAt
 );
 
 public record CreateDrugDto(
-    string ActiveIngredient,
-    string BrandName,
-    string? PharmacologicalGroup,
-    string? Indications,
-    string? Contraindications,
-    string? DosageAdults,
-    string? DosageChildren,
-    string? DosageHepaticImpairment,
-    string? DosageRenalImpairment,
-    string? AdverseEffects,
-    string? PregnancyPrecautions,
-    string? BreastfeedingPrecautions,
-    string? OtherPrecautions
+    string Code,
+    string Name,
+    string Status,
+    int? DosageFormId,
+    int? RouteId,
+    List<CreateDrugIngredientDto> Ingredients
+);
+
+public record UpdateDrugDto(
+    string Code,
+    string Name,
+    string Status,
+    int? DosageFormId,
+    int? RouteId,
+    List<CreateDrugIngredientDto> Ingredients
+);
+
+public record DrugIngredientDto(
+    int Id,
+    IngredientDto Ingredient,
+    string? Strength,
+    string? Unit
+);
+
+public record CreateDrugIngredientDto(
+    int IngredientId,
+    string? Strength,
+    string? Unit
+);
+
+public record IngredientDto(
+    int Id,
+    string Code,
+    string Name
+);
+
+public record DosageFormDto(
+    int Id,
+    string Code,
+    string Name
+);
+
+public record RouteDto(
+    int Id,
+    string Code,
+    string Name
 );
 
 public record ReferenceDto(

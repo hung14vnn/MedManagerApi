@@ -3,6 +3,7 @@ using System;
 using MedManagerApi.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MedManagerApi.Migrations
 {
     [DbContext(typeof(MedManagerDbContext))]
-    partial class MedManagerDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260119174955_RemoveRedundantDrugProperties")]
+    partial class RemoveRedundantDrugProperties
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

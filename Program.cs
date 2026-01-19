@@ -154,6 +154,10 @@ builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IUserManagementService, UserManagementService>();
 builder.Services.AddScoped<ISearchLogService, SearchLogService>();
+builder.Services.AddScoped<IIngredientService, IngredientService>();
+builder.Services.AddScoped<IDosageFormService, DosageFormService>();
+builder.Services.AddScoped<IRouteService, RouteService>();
+builder.Services.AddScoped<IMechanismService, MechanismService>();
 
 // Add CORS
 builder.Services.AddCors(options =>

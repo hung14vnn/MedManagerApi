@@ -38,19 +38,18 @@ public class MedManagerDbContext : IdentityDbContext<ApplicationUser>
         modelBuilder.Entity<Drug>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.ActiveIngredient).IsRequired().HasMaxLength(200);
-            entity.Property(e => e.BrandName).IsRequired().HasMaxLength(200);
-            entity.HasIndex(e => e.ActiveIngredient);
-            entity.HasIndex(e => e.BrandName);
-            entity.HasIndex(e => e.PharmacologicalGroup);
+            entity.Property(e => e.Code).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(500);
+            entity.HasIndex(e => e.Code).IsUnique();
+            entity.HasIndex(e => e.Name);
             entity.HasIndex(e => e.Status);
             entity.Property(e => e.Status).HasConversion<string>();
-            
+
             entity.HasOne(e => e.DosageForm)
                 .WithMany(d => d.Drugs)
                 .HasForeignKey(e => e.DosageFormId)
                 .OnDelete(DeleteBehavior.SetNull);
-                
+
             entity.HasOne(e => e.Route)
                 .WithMany(r => r.Drugs)
                 .HasForeignKey(e => e.RouteId)

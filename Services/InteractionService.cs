@@ -30,7 +30,13 @@ public class InteractionService : IInteractionService
             {
                 var interaction = await _context.DrugInteractions
                     .Include(di => di.Drug1)
+                        .ThenInclude(d => d.DosageForm)
+                    .Include(di => di.Drug1)
+                        .ThenInclude(d => d.Route)
                     .Include(di => di.Drug2)
+                        .ThenInclude(d => d.DosageForm)
+                    .Include(di => di.Drug2)
+                        .ThenInclude(d => d.Route)
                     .Include(di => di.References)
                     .Where(di =>
                         (di.Drug1Id == drugIds[i] && di.Drug2Id == drugIds[j]) ||
@@ -61,7 +67,13 @@ public class InteractionService : IInteractionService
     {
         var interaction = await _context.DrugInteractions
             .Include(di => di.Drug1)
+                .ThenInclude(d => d.DosageForm)
+            .Include(di => di.Drug1)
+                .ThenInclude(d => d.Route)
             .Include(di => di.Drug2)
+                .ThenInclude(d => d.DosageForm)
+            .Include(di => di.Drug2)
+                .ThenInclude(d => d.Route)
             .Include(di => di.References)
             .FirstOrDefaultAsync(di => di.Id == id);
 
@@ -94,7 +106,13 @@ public class InteractionService : IInteractionService
         // Reload with navigation properties
         var createdInteraction = await _context.DrugInteractions
             .Include(di => di.Drug1)
+                .ThenInclude(d => d.DosageForm)
+            .Include(di => di.Drug1)
+                .ThenInclude(d => d.Route)
             .Include(di => di.Drug2)
+                .ThenInclude(d => d.DosageForm)
+            .Include(di => di.Drug2)
+                .ThenInclude(d => d.Route)
             .Include(di => di.References)
             .FirstAsync(di => di.Id == interaction.Id);
 
@@ -138,35 +156,39 @@ public class InteractionService : IInteractionService
         );
     }
 
-    private static InteractionDetailDto MapToInteractionDetailDto(DrugInteraction interaction)
-    {
-        return new InteractionDetailDto(
-            interaction.Id,
-            new DrugSearchDto(
-                interaction.Drug1.Id,
-                interaction.Drug1.ActiveIngredient,
-                interaction.Drug1.BrandName,
-                interaction.Drug1.PharmacologicalGroup
-            ),
-            new DrugSearchDto(
-                interaction.Drug2.Id,
-                interaction.Drug2.ActiveIngredient,
-                interaction.Drug2.BrandName,
-                interaction.Drug2.PharmacologicalGroup
-            ),
-            interaction.Severity.ToString(),
-            interaction.Mechanism,
-            interaction.ClinicalEffects,
-            interaction.ManagementRecommendations,
-            interaction.References.Select(r => new ReferenceDto(
-                r.Id,
-                r.Title,
-                r.Authors,
-                r.Source,
-                r.Url,
-                r.PublicationDate,
-                r.Doi
-            )).ToList()
-        );
-    }
-}
+        private static InteractionDetailDto MapToInteractionDetailDto(DrugInteraction interaction)
+        {
+            return new InteractionDetailDto(
+                interaction.Id,
+                new DrugSearchDto(
+                    interaction.Drug1.Id,
+                    interaction.Drug1.Code,
+                    interaction.Drug1.Name,
+                    interaction.Drug1.Status.ToString(),
+                    interaction.Drug1.DosageForm != null ? interaction.Drug1.DosageForm.Name : null,
+                    interaction.Drug1.Route != null ? interaction.Drug1.Route.Name : null
+                ),
+                new DrugSearchDto(
+                    interaction.Drug2.Id,
+                    interaction.Drug2.Code,
+                    interaction.Drug2.Name,
+                    interaction.Drug2.Status.ToString(),
+                    interaction.Drug2.DosageForm != null ? interaction.Drug2.DosageForm.Name : null,
+                    interaction.Drug2.Route != null ? interaction.Drug2.Route.Name : null
+                ),
+                            interaction.Severity.ToString(),
+                            interaction.Mechanism,
+                            interaction.ClinicalEffects,
+                            interaction.ManagementRecommendations,
+                            interaction.References.Select(r => new ReferenceDto(
+                                r.Id,
+                                r.Title,
+                                r.Authors,
+                                r.Source,
+                                r.Url,
+                                r.PublicationDate,
+                                r.Doi
+                            )).ToList()
+                        );
+                    }
+                }

@@ -48,7 +48,7 @@ public class DrugsController : ControllerBase
     // Admin and Pharmacist only - update an existing drug
     [HttpPut("{id}")]
     [Authorize(Roles = "Admin,Pharmacist")]
-    public async Task<ActionResult<DrugDetailDto>> UpdateDrug(int id, CreateDrugDto dto)
+    public async Task<ActionResult<DrugDetailDto>> UpdateDrug(int id, UpdateDrugDto dto)
     {
         var drug = await _drugService.UpdateDrugAsync(id, dto);
         if (drug == null)

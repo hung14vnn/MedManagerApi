@@ -8,34 +8,39 @@ namespace MedManagerApi.Services;
 public class DrugService : IDrugService
 {
     private readonly MedManagerDbContext _context;
+    private readonly ILogger<DrugService> _logger;
 
-    public DrugService(MedManagerDbContext context)
+    public DrugService(MedManagerDbContext context, ILogger<DrugService> logger)
     {
         _context = context;
+        _logger = logger;
     }
 
     public async Task<List<DrugSearchDto>> SearchDrugsAsync(string? searchTerm = null)
     {
-        var query = _context.Drugs.AsQueryable();
+        var query = _context.Drugs
+            .Include(d => d.DosageForm)
+            .Include(d => d.Route)
+            .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
             var lowerSearchTerm = searchTerm.ToLower();
             query = query.Where(d =>
-                d.ActiveIngredient.ToLower().Contains(lowerSearchTerm) ||
-                d.BrandName.ToLower().Contains(lowerSearchTerm) ||
-                (d.PharmacologicalGroup != null && d.PharmacologicalGroup.ToLower().Contains(lowerSearchTerm))
+                d.Code.ToLower().Contains(lowerSearchTerm) ||
+                d.Name.ToLower().Contains(lowerSearchTerm)
             );
         }
 
-        // Apply ordering on the entity property before projecting to DTO so EF Core can translate the query.
         return await query
-            .OrderBy(d => d.ActiveIngredient)
+            .OrderBy(d => d.Name)
             .Select(d => new DrugSearchDto(
                 d.Id,
-                d.ActiveIngredient,
-                d.BrandName,
-                d.PharmacologicalGroup
+                d.Code,
+                d.Name,
+                d.Status.ToString(),
+                d.DosageForm != null ? d.DosageForm.Name : null,
+                d.Route != null ? d.Route.Name : null
             ))
             .ToListAsync();
     }
@@ -43,6 +48,10 @@ public class DrugService : IDrugService
     public async Task<DrugDetailDto?> GetDrugByIdAsync(int id)
     {
         var drug = await _context.Drugs
+            .Include(d => d.DosageForm)
+            .Include(d => d.Route)
+            .Include(d => d.DrugIngredients)
+                .ThenInclude(di => di.Ingredient)
             .Include(d => d.References)
             .FirstOrDefaultAsync(d => d.Id == id);
 
@@ -53,55 +62,128 @@ public class DrugService : IDrugService
 
     public async Task<DrugDetailDto> CreateDrugAsync(CreateDrugDto dto)
     {
-        var drug = new Drug
+        try
         {
-            ActiveIngredient = dto.ActiveIngredient,
-            BrandName = dto.BrandName,
-            PharmacologicalGroup = dto.PharmacologicalGroup,
-            Indications = dto.Indications,
-            Contraindications = dto.Contraindications,
-            DosageAdults = dto.DosageAdults,
-            DosageChildren = dto.DosageChildren,
-            DosageHepaticImpairment = dto.DosageHepaticImpairment,
-            DosageRenalImpairment = dto.DosageRenalImpairment,
-            AdverseEffects = dto.AdverseEffects,
-            PregnancyPrecautions = dto.PregnancyPrecautions,
-            BreastfeedingPrecautions = dto.BreastfeedingPrecautions,
-            OtherPrecautions = dto.OtherPrecautions
-        };
+            // Parse status
+            if (!Enum.TryParse<DrugStatus>(dto.Status, out var status))
+            {
+                throw new ArgumentException($"Invalid status value: {dto.Status}");
+            }
 
-        _context.Drugs.Add(drug);
-        await _context.SaveChangesAsync();
+            var drug = new Drug
+            {
+                Code = dto.Code,
+                Name = dto.Name,
+                Status = status,
+                DosageFormId = dto.DosageFormId,
+                RouteId = dto.RouteId,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
 
-        return MapToDrugDetailDto(drug);
+            _context.Drugs.Add(drug);
+            await _context.SaveChangesAsync();
+
+            // Add ingredients
+            if (dto.Ingredients != null && dto.Ingredients.Any())
+            {
+                foreach (var ingredientDto in dto.Ingredients)
+                {
+                    var drugIngredient = new DrugIngredient
+                    {
+                        DrugId = drug.Id,
+                        IngredientId = ingredientDto.IngredientId,
+                        Strength = ingredientDto.Strength,
+                        Unit = ingredientDto.Unit,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    _context.DrugIngredients.Add(drugIngredient);
+                }
+                await _context.SaveChangesAsync();
+            }
+
+            // Reload with all relationships
+            var createdDrug = await _context.Drugs
+                .Include(d => d.DosageForm)
+                .Include(d => d.Route)
+                .Include(d => d.DrugIngredients)
+                    .ThenInclude(di => di.Ingredient)
+                .Include(d => d.References)
+                .FirstAsync(d => d.Id == drug.Id);
+
+            _logger.LogInformation("Drug created: {Code} - {Name}", drug.Code, drug.Name);
+
+            return MapToDrugDetailDto(createdDrug);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating drug: {Code}", dto.Code);
+            throw;
+        }
     }
 
-    public async Task<DrugDetailDto?> UpdateDrugAsync(int id, CreateDrugDto dto)
+    public async Task<DrugDetailDto?> UpdateDrugAsync(int id, UpdateDrugDto dto)
     {
-        var drug = await _context.Drugs
-            .Include(d => d.References)
-            .FirstOrDefaultAsync(d => d.Id == id);
+        try
+        {
+            var drug = await _context.Drugs
+                .Include(d => d.DrugIngredients)
+                .FirstOrDefaultAsync(d => d.Id == id);
 
-        if (drug == null) return null;
+            if (drug == null) return null;
 
-        drug.ActiveIngredient = dto.ActiveIngredient;
-        drug.BrandName = dto.BrandName;
-        drug.PharmacologicalGroup = dto.PharmacologicalGroup;
-        drug.Indications = dto.Indications;
-        drug.Contraindications = dto.Contraindications;
-        drug.DosageAdults = dto.DosageAdults;
-        drug.DosageChildren = dto.DosageChildren;
-        drug.DosageHepaticImpairment = dto.DosageHepaticImpairment;
-        drug.DosageRenalImpairment = dto.DosageRenalImpairment;
-        drug.AdverseEffects = dto.AdverseEffects;
-        drug.PregnancyPrecautions = dto.PregnancyPrecautions;
-        drug.BreastfeedingPrecautions = dto.BreastfeedingPrecautions;
-        drug.OtherPrecautions = dto.OtherPrecautions;
-        drug.UpdatedAt = DateTime.UtcNow;
+            // Parse status
+            if (!Enum.TryParse<DrugStatus>(dto.Status, out var status))
+            {
+                throw new ArgumentException($"Invalid status value: {dto.Status}");
+            }
 
-        await _context.SaveChangesAsync();
+            drug.Code = dto.Code;
+            drug.Name = dto.Name;
+            drug.Status = status;
+            drug.DosageFormId = dto.DosageFormId;
+            drug.RouteId = dto.RouteId;
+            drug.UpdatedAt = DateTime.UtcNow;
 
-        return MapToDrugDetailDto(drug);
+            // Update ingredients - remove old ones and add new ones
+            _context.DrugIngredients.RemoveRange(drug.DrugIngredients);
+
+            if (dto.Ingredients != null && dto.Ingredients.Any())
+            {
+                foreach (var ingredientDto in dto.Ingredients)
+                {
+                    var drugIngredient = new DrugIngredient
+                    {
+                        DrugId = drug.Id,
+                        IngredientId = ingredientDto.IngredientId,
+                        Strength = ingredientDto.Strength,
+                        Unit = ingredientDto.Unit,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    _context.DrugIngredients.Add(drugIngredient);
+                }
+            }
+
+            await _context.SaveChangesAsync();
+
+            // Reload with all relationships
+            var updatedDrug = await _context.Drugs
+                .Include(d => d.DosageForm)
+                .Include(d => d.Route)
+                .Include(d => d.DrugIngredients)
+                    .ThenInclude(di => di.Ingredient)
+                .Include(d => d.References)
+                .FirstAsync(d => d.Id == id);
+
+            _logger.LogInformation("Drug updated: {Code} - {Name}", drug.Code, drug.Name);
+
+            return MapToDrugDetailDto(updatedDrug);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating drug: {Id}", id);
+            throw;
+        }
     }
 
     public async Task<bool> DeleteDrugAsync(int id)
@@ -111,6 +193,9 @@ public class DrugService : IDrugService
 
         _context.Drugs.Remove(drug);
         await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Drug deleted: {Id}", id);
+
         return true;
     }
 
@@ -145,19 +230,29 @@ public class DrugService : IDrugService
     {
         return new DrugDetailDto(
             drug.Id,
-            drug.ActiveIngredient,
-            drug.BrandName,
-            drug.PharmacologicalGroup,
-            drug.Indications,
-            drug.Contraindications,
-            drug.DosageAdults,
-            drug.DosageChildren,
-            drug.DosageHepaticImpairment,
-            drug.DosageRenalImpairment,
-            drug.AdverseEffects,
-            drug.PregnancyPrecautions,
-            drug.BreastfeedingPrecautions,
-            drug.OtherPrecautions,
+            drug.Code,
+            drug.Name,
+            drug.Status.ToString(),
+            drug.DosageForm != null ? new DosageFormDto(
+                drug.DosageForm.Id,
+                drug.DosageForm.Code,
+                drug.DosageForm.Name
+            ) : null,
+            drug.Route != null ? new RouteDto(
+                drug.Route.Id,
+                drug.Route.Code,
+                drug.Route.Name
+            ) : null,
+            drug.DrugIngredients.Select(di => new DrugIngredientDto(
+                di.Id,
+                new IngredientDto(
+                    di.Ingredient.Id,
+                    di.Ingredient.Code,
+                    di.Ingredient.Name
+                ),
+                di.Strength,
+                di.Unit
+            )).ToList(),
             drug.References.Select(r => new ReferenceDto(
                 r.Id,
                 r.Title,
@@ -166,7 +261,9 @@ public class DrugService : IDrugService
                 r.Url,
                 r.PublicationDate,
                 r.Doi
-            )).ToList()
+            )).ToList(),
+            drug.CreatedAt,
+            drug.UpdatedAt
         );
     }
 }
