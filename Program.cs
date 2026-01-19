@@ -153,6 +153,7 @@ builder.Services.AddScoped<IDiseaseService, DiseaseService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IUserManagementService, UserManagementService>();
+builder.Services.AddScoped<ISearchLogService, SearchLogService>();
 
 // Add CORS
 builder.Services.AddCors(options =>

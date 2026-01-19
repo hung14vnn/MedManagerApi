@@ -18,7 +18,7 @@ public class DrugInteraction
     public Drug Drug2 { get; set; } = null!;
     
     public InteractionSeverity Severity { get; set; }
-    public string Mechanism { get; set; } = string.Empty;
+    public string? Mechanism { get; set; }
     public string ClinicalEffects { get; set; } = string.Empty;
     public string ManagementRecommendations { get; set; } = string.Empty;
     
@@ -27,4 +27,5 @@ public class DrugInteraction
     
     // Navigation Properties
     public ICollection<InteractionReference> References { get; set; } = new List<InteractionReference>();
+    public ICollection<InteractionMechanism> InteractionMechanisms { get; set; } = new List<InteractionMechanism>();
 }
