@@ -240,12 +240,6 @@ using (var scope = app.Services.CreateScope())
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "MedManager API V1");
-        c.RoutePrefix = string.Empty; // serve swagger at app root
-    });
 }
 else
 {
@@ -253,6 +247,14 @@ else
     app.UseExceptionHandler("/error");
     app.UseHsts();
 }
+
+// Enable Swagger for all environments
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "MedManager API V1");
+    c.RoutePrefix = string.Empty; // serve swagger at app root
+});
 
 // Only enable HTTPS redirection when HTTPS is configured in URLs
 var configuredUrls = builder.Configuration["ASPNETCORE_URLS"] ?? Environment.GetEnvironmentVariable("ASPNETCORE_URLS");
