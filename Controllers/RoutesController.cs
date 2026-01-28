@@ -41,7 +41,7 @@ public class RoutesController : ControllerBase
     }
 
     /// <summary>
-    /// Create new route (Admin only)
+    /// Create new route (SuperAdmin and Admin only)
     /// </summary>
     [HttpPost]
     [Authorize(Roles = $"{AppRoles.SuperAdmin},{AppRoles.Admin}")]

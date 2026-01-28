@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using MedManagerApi.DTOs;
 using MedManagerApi.Services;
+using MedManagerApi.Models;
 
 namespace MedManagerApi.Controllers;
 
@@ -9,10 +11,12 @@ namespace MedManagerApi.Controllers;
 public class InteractionsController : ControllerBase
 {
     private readonly IInteractionService _interactionService;
+    private readonly ISearchLogService _searchLogService;
 
-    public InteractionsController(IInteractionService interactionService)
+    public InteractionsController(IInteractionService interactionService, ISearchLogService searchLogService)
     {
         _interactionService = interactionService;
+        _searchLogService = searchLogService;
     }
 
     [HttpPost("check")]
@@ -24,6 +28,21 @@ public class InteractionsController : ControllerBase
         }
 
         var result = await _interactionService.CheckInteractionsAsync(request.DrugIds);
+
+        // Log search
+        var userId = User.Identity?.IsAuthenticated == true ? User.FindFirst("sub")?.Value : null;
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var userAgent = HttpContext.Request.Headers["User-Agent"].ToString();
+
+        await _searchLogService.LogSearchAsync(
+            $"Drug IDs: {string.Join(", ", request.DrugIds)}",
+            SearchEntityType.Interaction,
+            result.Interactions.Count,
+            userId,
+            ipAddress,
+            userAgent
+        );
+
         return Ok(result);
     }
 
@@ -38,6 +57,7 @@ public class InteractionsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = $"{AppRoles.SuperAdmin},{AppRoles.Admin}")]
     public async Task<ActionResult<InteractionDetailDto>> CreateInteraction(CreateInteractionDto dto)
     {
         try
@@ -52,6 +72,7 @@ public class InteractionsController : ControllerBase
     }
 
     [HttpDelete("{id}")]
+    [Authorize(Roles = $"{AppRoles.SuperAdmin},{AppRoles.Admin}")]
     public async Task<IActionResult> DeleteInteraction(int id)
     {
         var result = await _interactionService.DeleteInteractionAsync(id);
@@ -62,6 +83,7 @@ public class InteractionsController : ControllerBase
     }
 
     [HttpPost("{id}/references")]
+    [Authorize(Roles = $"{AppRoles.SuperAdmin},{AppRoles.Admin}")]
     public async Task<ActionResult<ReferenceDto>> AddReference(int id, CreateReferenceDto dto)
     {
         try

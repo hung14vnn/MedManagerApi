@@ -41,7 +41,7 @@ public class DosageFormsController : ControllerBase
     }
 
     /// <summary>
-    /// Create new dosage form (Admin only)
+    /// Create new dosage form (SuperAdmin and Admin only)
     /// </summary>
     [HttpPost]
     [Authorize(Roles = $"{AppRoles.SuperAdmin},{AppRoles.Admin}")]

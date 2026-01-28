@@ -41,7 +41,7 @@ public class MechanismsController : ControllerBase
     }
 
     /// <summary>
-    /// Create new mechanism (Admin only)
+    /// Create new mechanism (SuperAdmin and Admin only)
     /// </summary>
     [HttpPost]
     [Authorize(Roles = $"{AppRoles.SuperAdmin},{AppRoles.Admin}")]

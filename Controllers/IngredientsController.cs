@@ -10,10 +10,12 @@ namespace MedManagerApi.Controllers;
 public class IngredientsController : ControllerBase
 {
     private readonly IIngredientService _ingredientService;
+    private readonly ISearchLogService _searchLogService;
 
-    public IngredientsController(IIngredientService ingredientService)
+    public IngredientsController(IIngredientService ingredientService, ISearchLogService searchLogService)
     {
         _ingredientService = ingredientService;
+        _searchLogService = searchLogService;
     }
 
         /// <summary>
@@ -62,11 +64,25 @@ public class IngredientsController : ControllerBase
 
             var ingredients = await _ingredientService.SearchAsync(q);
 
+            // Log search
+            var userId = User.Identity?.IsAuthenticated == true ? User.FindFirst("sub")?.Value : null;
+            var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+            var userAgent = HttpContext.Request.Headers["User-Agent"].ToString();
+
+            await _searchLogService.LogSearchAsync(
+                q,
+                SearchEntityType.Ingredient,
+                ingredients.Count,
+                userId,
+                ipAddress,
+                userAgent
+            );
+
             return Ok(ingredients);
         }
 
         /// <summary>
-        /// Create new ingredient (Admin only)
+        /// Create new ingredient (SuperAdmin and Admin only)
         /// </summary>
         [HttpPost]
         [Authorize(Roles = $"{AppRoles.SuperAdmin},{AppRoles.Admin}")]

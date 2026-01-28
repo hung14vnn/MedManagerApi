@@ -11,10 +11,12 @@ namespace MedManagerApi.Controllers;
 public class DrugsController : ControllerBase
 {
     private readonly IDrugService _drugService;
+    private readonly ISearchLogService _searchLogService;
 
-    public DrugsController(IDrugService drugService)
+    public DrugsController(IDrugService drugService, ISearchLogService searchLogService)
     {
         _drugService = drugService;
+        _searchLogService = searchLogService;
     }
 
     // Public endpoint - anyone can search drugs
@@ -22,6 +24,21 @@ public class DrugsController : ControllerBase
     public async Task<ActionResult<List<DrugSearchDto>>> SearchDrugs([FromQuery] string? search = null)
     {
         var drugs = await _drugService.SearchDrugsAsync(search);
+
+        // Log search
+        var userId = User.Identity?.IsAuthenticated == true ? User.FindFirst("sub")?.Value : null;
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var userAgent = HttpContext.Request.Headers["User-Agent"].ToString();
+
+        await _searchLogService.LogSearchAsync(
+            search ?? "",
+            SearchEntityType.Drug,
+            drugs.Count,
+            userId,
+            ipAddress,
+            userAgent
+        );
+
         return Ok(drugs);
     }
 
@@ -36,18 +53,18 @@ public class DrugsController : ControllerBase
         return Ok(drug);
     }
 
-    // Admin and Pharmacist only - create a new drug
+    // SuperAdmin, Admin and Pharmacist only - create a new drug
     [HttpPost]
-    [Authorize(Roles = "Admin,Pharmacist")]
+    [Authorize(Roles = $"{AppRoles.SuperAdmin},{AppRoles.Admin},Pharmacist")]
     public async Task<ActionResult<DrugDetailDto>> CreateDrug(CreateDrugDto dto)
     {
         var drug = await _drugService.CreateDrugAsync(dto);
         return CreatedAtAction(nameof(GetDrug), new { id = drug.Id }, drug);
     }
 
-    // Admin and Pharmacist only - update an existing drug
+    // SuperAdmin, Admin and Pharmacist only - update an existing drug
     [HttpPut("{id}")]
-    [Authorize(Roles = "Admin,Pharmacist")]
+    [Authorize(Roles = $"{AppRoles.SuperAdmin},{AppRoles.Admin},Pharmacist")]
     public async Task<ActionResult<DrugDetailDto>> UpdateDrug(int id, UpdateDrugDto dto)
     {
         var drug = await _drugService.UpdateDrugAsync(id, dto);
@@ -57,9 +74,9 @@ public class DrugsController : ControllerBase
         return Ok(drug);
     }
 
-    // Admin only - delete a drug
+    // SuperAdmin and Admin only - delete a drug
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = $"{AppRoles.SuperAdmin},{AppRoles.Admin}")]
     public async Task<IActionResult> DeleteDrug(int id)
     {
         var result = await _drugService.DeleteDrugAsync(id);
@@ -69,9 +86,9 @@ public class DrugsController : ControllerBase
         return NoContent();
     }
 
-    // Admin and Pharmacist only - add a reference to a drug
+    // SuperAdmin, Admin and Pharmacist only - add a reference to a drug
     [HttpPost("{id}/references")]
-    [Authorize(Roles = "Admin,Pharmacist")]
+    [Authorize(Roles = $"{AppRoles.SuperAdmin},{AppRoles.Admin},Pharmacist")]
     public async Task<ActionResult<ReferenceDto>> AddReference(int id, CreateReferenceDto dto)
     {
         try
