@@ -4,6 +4,7 @@ namespace MedManagerApi.Services;
 
 public interface IDrugService
 {
+    Task<(List<DrugSearchDto> drugs, int totalCount, int totalPages)> GetAllDrugsAsync(int page, int pageSize);
     Task<List<DrugSearchDto>> SearchDrugsAsync(string? searchTerm = null);
     Task<DrugDetailDto?> GetDrugByIdAsync(int id);
     Task<DrugDetailDto> CreateDrugAsync(CreateDrugDto dto);

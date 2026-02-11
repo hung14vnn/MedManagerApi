@@ -65,9 +65,6 @@ public class DosageFormsController : ControllerBase
     [Authorize(Roles = $"{AppRoles.SuperAdmin},{AppRoles.Admin}")]
     public async Task<IActionResult> Update(int id, [FromBody] DosageForm dosageForm)
     {
-        if (id != dosageForm.Id)
-            return BadRequest(new { message = "ID mismatch" });
-
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 

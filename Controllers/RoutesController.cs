@@ -65,8 +65,6 @@ public class RoutesController : ControllerBase
     [Authorize(Roles = $"{AppRoles.SuperAdmin},{AppRoles.Admin}")]
     public async Task<IActionResult> Update(int id, [FromBody] RouteInformation route)
     {
-        if (id != route.Id)
-            return BadRequest(new { message = "ID mismatch" });
 
         if (!ModelState.IsValid)
             return BadRequest(ModelState);

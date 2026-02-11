@@ -11,10 +11,14 @@ namespace MedManagerApi.Controllers;
 public class SearchAnalyticsController : ControllerBase
 {
     private readonly ISearchLogService _searchLogService;
+    private readonly ISearchLogCleanupService _searchLogCleanupService;
 
-    public SearchAnalyticsController(ISearchLogService searchLogService)
+    public SearchAnalyticsController(
+        ISearchLogService searchLogService, 
+        ISearchLogCleanupService searchLogCleanupService)
     {
         _searchLogService = searchLogService;
+        _searchLogCleanupService = searchLogCleanupService;
     }
 
     /// <summary>
@@ -107,4 +111,67 @@ public class SearchAnalyticsController : ControllerBase
             })
         });
     }
+
+    /// <summary>
+    /// Get search log statistics (count and size)
+    /// </summary>
+    [HttpGet("info")]
+    public async Task<IActionResult> GetLogInfo()
+    {
+        var count = await _searchLogCleanupService.GetLogCountAsync();
+        var size = await _searchLogCleanupService.GetLogSizeEstimateAsync();
+        
+        return Ok(new
+        {
+            totalLogs = count,
+            estimatedSizeBytes = size,
+            estimatedSizeMB = Math.Round(size / 1024.0 / 1024.0, 2),
+            message = "Size is an estimate based on ~500 bytes per log entry"
+        });
+    }
+
+    /// <summary>
+    /// Manually trigger cleanup of old search logs
+    /// </summary>
+    [HttpPost("cleanup")]
+    public async Task<IActionResult> CleanupLogs([FromQuery] int daysToKeep = 90)
+    {
+        if (daysToKeep < 30)
+            return BadRequest(new { message = "For safety, daysToKeep should be at least 30 days" });
+
+        var beforeCount = await _searchLogCleanupService.GetLogCountAsync();
+        var beforeSize = await _searchLogCleanupService.GetLogSizeEstimateAsync();
+
+        await _searchLogCleanupService.CleanupOldLogsAsync(daysToKeep);
+
+        var afterCount = await _searchLogCleanupService.GetLogCountAsync();
+        var afterSize = await _searchLogCleanupService.GetLogSizeEstimateAsync();
+
+        var deletedCount = beforeCount - afterCount;
+        var freedSize = beforeSize - afterSize;
+
+        return Ok(new
+        {
+            before = new
+            {
+                totalLogs = beforeCount,
+                sizeBytes = beforeSize,
+                sizeMB = Math.Round(beforeSize / 1024.0 / 1024.0, 2)
+            },
+            after = new
+            {
+                totalLogs = afterCount,
+                sizeBytes = afterSize,
+                sizeMB = Math.Round(afterSize / 1024.0 / 1024.0, 2)
+            },
+            deleted = new
+            {
+                logs = deletedCount,
+                freedBytes = freedSize,
+                freedMB = Math.Round(freedSize / 1024.0 / 1024.0, 2)
+            },
+            message = $"Successfully deleted {deletedCount} search logs older than {daysToKeep} days"
+        });
+    }
 }
+

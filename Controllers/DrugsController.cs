@@ -19,11 +19,34 @@ public class DrugsController : ControllerBase
         _searchLogService = searchLogService;
     }
 
-    // Public endpoint - anyone can search drugs
-    [HttpGet]
-    public async Task<ActionResult<List<DrugSearchDto>>> SearchDrugs([FromQuery] string? search = null)
+    // Public endpoint - get all drugs with pagination
+    [HttpGet("all")]
+    [Authorize(Roles = $"{AppRoles.SuperAdmin}")]
+    public async Task<ActionResult> GetAllDrugs([FromQuery] int page = 1, [FromQuery] int pageSize = 50)
     {
-        var drugs = await _drugService.SearchDrugsAsync(search);
+        var (drugs, totalCount, totalPages) = await _drugService.GetAllDrugsAsync(page, pageSize);
+        
+        return Ok(new
+        {
+            data = drugs,
+            pagination = new
+            {
+                currentPage = page,
+                pageSize,
+                totalCount,
+                totalPages
+            }
+        });
+    }
+
+    // Public endpoint - search drugs by name or code
+    [HttpGet("search")]
+    public async Task<ActionResult<List<DrugSearchDto>>> SearchDrugs([FromQuery] string q)
+    {
+        if (string.IsNullOrWhiteSpace(q))
+            return BadRequest(new { message = "Search query is required" });
+
+        var drugs = await _drugService.SearchDrugsAsync(q);
 
         // Log search
         var userId = User.Identity?.IsAuthenticated == true ? User.FindFirst("sub")?.Value : null;
@@ -31,7 +54,7 @@ public class DrugsController : ControllerBase
         var userAgent = HttpContext.Request.Headers["User-Agent"].ToString();
 
         await _searchLogService.LogSearchAsync(
-            search ?? "",
+            q,
             SearchEntityType.Drug,
             drugs.Count,
             userId,

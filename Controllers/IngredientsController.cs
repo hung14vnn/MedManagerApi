@@ -106,9 +106,6 @@ public class IngredientsController : ControllerBase
         [Authorize(Roles = $"{AppRoles.SuperAdmin},{AppRoles.Admin}")]
         public async Task<IActionResult> Update(int id, [FromBody] Ingredient ingredient)
         {
-            if (id != ingredient.Id)
-                return BadRequest(new { message = "ID mismatch" });
-
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 

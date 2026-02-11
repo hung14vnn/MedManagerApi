@@ -158,6 +158,10 @@ builder.Services.AddScoped<IIngredientService, IngredientService>();
 builder.Services.AddScoped<IDosageFormService, DosageFormService>();
 builder.Services.AddScoped<IRouteService, RouteService>();
 builder.Services.AddScoped<IMechanismService, MechanismService>();
+builder.Services.AddScoped<ISearchLogCleanupService, SearchLogCleanupService>();
+
+// Register background services
+builder.Services.AddHostedService<MedManagerApi.BackgroundServices.SearchLogCleanupBackgroundService>();
 
 // Add CORS
 builder.Services.AddCors(options =>

@@ -16,6 +16,31 @@ public class DrugService : IDrugService
         _logger = logger;
     }
 
+    public async Task<(List<DrugSearchDto> drugs, int totalCount, int totalPages)> GetAllDrugsAsync(int page, int pageSize)
+    {
+        var totalCount = await _context.Drugs.CountAsync();
+        
+        var drugs = await _context.Drugs
+            .Include(d => d.DosageForm)
+            .Include(d => d.Route)
+            .OrderBy(d => d.Name)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(d => new DrugSearchDto(
+                d.Id,
+                d.Code,
+                d.Name,
+                d.Status.ToString(),
+                d.DosageForm != null ? d.DosageForm.Name : null,
+                d.Route != null ? d.Route.Name : null
+            ))
+            .ToListAsync();
+
+        var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+
+        return (drugs, totalCount, totalPages);
+    }
+
     public async Task<List<DrugSearchDto>> SearchDrugsAsync(string? searchTerm = null)
     {
         var query = _context.Drugs
